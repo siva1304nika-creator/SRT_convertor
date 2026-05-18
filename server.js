@@ -4,13 +4,19 @@ const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 const Groq = require("groq-sdk");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const uploadDir = path.join(os.tmpdir(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const upload = multer({
-  dest: "uploads/",
+  dest: uploadDir,
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
@@ -19,7 +25,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 
-if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
+// if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
 
 function secondsToSRT(secs) {
   const ms = Math.round((secs % 1) * 1000);
@@ -155,6 +161,10 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🎙  Audio → SRT server running at http://localhost:${PORT}\n`);
-});
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`\n🎙  Audio → SRT server running at http://localhost:${PORT}\n`);
+  });
+}
+
+module.exports = app;
